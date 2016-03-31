@@ -1,0 +1,165 @@
+#include"HashBacket.hpp"
+
+
+template<class K,class V>
+struct KeyValue
+{
+	K _key;
+	V _value;
+	KeyValue<K, V>* _next;
+
+	KeyValue()
+	{}
+
+	KeyValue(const K& key,const V& value)
+		:_key(key)
+		, _value(value)
+		, _next(NULL)
+	{}
+}; 
+
+template<class K>
+struct HashFuncDefault
+{
+	size_t operator()(const K& key)
+	{
+		return key;
+	}
+};
+
+static size_t BKDRHash(const char* str)    //实现 string 类型 转化为 整数
+{
+	unsigned int seed = 131;
+	unsigned int hash = 0;																		
+	while (*str)
+	{
+		hash = hash * seed + (*str++);
+	}
+	return (hash & 0x7FFFFFFF);                //   保证返回的是正数   *********  《《技巧》》
+}
+
+template<>
+struct HashFuncDefault<string>   //特化HashFuncDefault
+{
+	size_t operator()(const string& key)
+	{
+		return  BKDRHash(key.c_str());    //要用c_str()才能把string 转化为 char*
+	}
+};
+
+
+
+
+template<class K, class V, class HF = HashFuncDefault<K>>
+class HashBacket
+{
+public:
+	HashBacket(const size_t capacity = 0)
+		:_capacity(capacity)                               // 待解决
+		, _table(new KeyValue<K,V>*[capacity])
+	{}
+
+	bool Insert(KeyValue<K,V>& data)                       // 待解决
+	{
+		_CheckCapacity();
+
+		int index = HashFunc(data._key);
+
+		if (_table[index] == NULL)
+		{
+			_table[index] = data;
+			_size++;                        //只有在NULL上加节点  _size  才  ++
+		}
+		else
+		{
+			KeyValue<K, V> cur = _table[index];
+			while (cur != NULL)
+			{
+				if (cur->_value != data->_value)    //防冗余
+				{
+					cur = cur->_next;
+				}
+				else
+				{
+					return false;
+				}
+			}
+
+			data->_next = _table[index];   //用头插法插入节点 
+			_table[index] = data;
+		}
+	}
+
+protected:
+	void _CheckCapacity()
+	{
+		if (_capacity == 0 || _size * 10 / _capacity >= 1)
+		{
+			size_t NewCapacity = _GetPrimenNumber(_capacity);
+			
+			HashBacket<K, V> h = new HashBacket(NewCapacity);
+			for (size_t i = 0; i < _capacity; i++)    //搬数据
+			{
+				KeyValue<K, Y> data = _table[i];
+				h.Insert(data);
+			}
+
+			swap(h._table, _table);
+			_capacity = NewCapacity;
+		}
+	}
+
+	int HashFunc(const K& key)
+	{
+		HF hashFunc;
+		return hashFunc()(key) % _capacity;
+	}
+
+	unsigned long _GetPrimenNumber(const size_t capacity)   //取素数   用来减少冲突  
+	{
+		const int _PrimeSize = 28;
+		static const unsigned long _PrimeList[_PrimeSize] =
+		{
+			53ul, 97ul, 193ul, 389ul, 769ul,
+			1543ul, 3079ul, 6151ul, 12289ul, 24593ul,
+			49157ul, 98317ul, 196613ul, 393241ul, 786433ul,
+			1572869ul, 3145739ul, 6291469ul, 12582917ul, 25165843ul,
+			50331653ul, 100663319ul, 201326611ul, 402653189ul, 805306457ul,
+			1610612741ul, 3221225473ul, 4294967291ul
+		};
+
+		size_t i = 0;
+		while (capacity >= _PrimeList[i])
+		{
+			i++;
+		}
+
+		return _PrimeList[i];
+	}
+
+protected:
+	KeyValue<K, V>** _table;
+	size_t _capacity;
+	size_t _size;        //用来表示  负载程度
+};
+
+
+void Test1()
+{
+	KeyValue<int, int> kv1(1, 1);
+	KeyValue<int, int> kv2(2, 2);
+	KeyValue<int, int> kv3(3, 3);
+	KeyValue<int, int> kv4(4, 4);
+
+	HashBacket<int, int> h1(10);
+	h1.Insert(kv1);
+
+
+
+	
+}
+
+int main()
+{
+	return 0;
+}
